@@ -485,6 +485,9 @@ impl
      * 
      * 5. Handle response
      * - Implement AdyenPlatformPayoutResponse
+     * 
+     * 6. Error and 500 erro response
+     * - Copy paste
      */
 
     fn get_url(
@@ -591,5 +594,21 @@ impl
                 data: data.clone(),
                 http_code: res.status_code,
         })
+    }
+
+
+    fn get_error_response(
+        &self,
+        res: types::Response,
+        event_builder: Option<&mut ConnectorEvent>,
+    ) -> CustomResult<types::ErrorResponse, errors::ConnectorError> {
+        self.build_error_response(res, event_builder)
+    }
+    fn get_5xx_error_response(
+        &self,
+        res: types::Response,
+        event_builder: Option<&mut ConnectorEvent>,
+    ) -> CustomResult<types::ErrorResponse, errors::ConnectorError> {
+        self.build_error_response(res, event_builder)
     }
 }
