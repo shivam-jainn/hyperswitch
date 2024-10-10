@@ -539,8 +539,8 @@ impl
             req.request.destination_currency,
         )?;
 
-        let connector_router_data = adyen::AdyenPlatformPaymentRouterData::try_from((amount, req))?;
-        let connector_req = adyen::AdyenPlatformPayoutEligibilityRequest::try_from(&connector_router_data)?;
+        let connector_router_data = adyenplatform::AdyenPlatformRouterData::try_from((amount, req))?;
+        let connector_req = adyenplatform::AdyenPlatformPayoutEligibilityRequest::try_from(&connector_router_data)?;
 
         Ok(RequestContent::Json(Box::new(connector_req)))
     }
