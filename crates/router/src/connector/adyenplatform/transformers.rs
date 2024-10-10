@@ -2,6 +2,7 @@ use common_utils::types::MinorUnit;
 use error_stack::Report;
 use masking::Secret;
 use serde::Serialize;
+use cards::CardNumber;
 
 #[cfg(feature = "payouts")]
 pub mod payouts;
@@ -44,4 +45,27 @@ impl<T> TryFrom<(MinorUnit, T)> for AdyenPlatformRouterData<T> {
             router_data: item,
         })
     }
+}
+
+#[cfg(feature = "payouts")]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdyenPlatformPayoutEligibilityRequest {
+    amount: Amount,
+    merchant_account: Secret<String>,
+    payment_method: PayoutCardDetails,
+    reference: String,
+    shopper_reference: String,
+}
+
+#[cfg(feature = "payouts")]
+#[derive(Default, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PayoutCardDetails {
+    #[serde(rename = "type")]
+    payment_method_type: String,
+    number: CardNumber,
+    expiry_month: Secret<String>,
+    expiry_year: Secret<String>,
+    holder_name: Secret<String>,
 }
