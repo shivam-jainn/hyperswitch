@@ -482,6 +482,9 @@ impl
      *     
      * 4. Build request
      * - Common function . Copy Paste work
+     * 
+     * 5. Handle response
+     * - Implement AdyenPlatformPayoutResponse
      */
 
     fn get_url(
@@ -567,5 +570,26 @@ impl
             .build();
 
         Ok(Some(request))
+    }
+
+    #[instrument(skip_all)]
+    fn handle_response(
+        &self,
+        data: &types::PayoutsRouterData<api::PoEligibility>,
+        event_builder: Option<&mut ConnectorEvent>,
+        res: types::Response,
+    ) -> CustomResult<types::PayoutsRouterData<api::PoEligibility>, errors::ConnectorError> {
+        let response: adyen::AdyenPayoutResponse = res
+            .response
+            .parse_struct("AdyenPayoutResponse")
+            .change_context(errors::ConnectorError::ResponseDeserializationFailed)?;
+
+        event_builder.map(|i| i.set_response_body(&response));
+        router_env::logger::info!(connector_response=?response);
+        types::RouterData::try_from(types::ResponseRouterData {
+                response,
+                data: data.clone(),
+                http_code: res.status_code,
+        })
     }
 }
