@@ -467,7 +467,10 @@ impl
      * https://checkout-test.adyen.com/v71/payments
      * 
      * pub type PayoutRouterData<F> = RouterData<F, PayoutsData, PayoutsResponseData>
-     *       
+     *  
+     * 2. Fix headers
+     * 
+     * Docs states that we idempotency key      
      */
 
     fn get_url(
@@ -479,7 +482,7 @@ impl
             "{}{}/transfers",
             connectors.adyenplatform.base_url,
             ADYEN_API_VERSION
-        ));
+        ))
     }
 
 
