@@ -479,7 +479,9 @@ impl
      * 
      * - Implement AdyenPlatformPaymentRouterData
      * - Implement AdyenPlatformPayoutEligibilityRequest
-     *       
+     *     
+     * 4. Build request
+     * - Common function . Copy Paste work
      */
 
     fn get_url(
@@ -543,5 +545,27 @@ impl
         let connector_req = adyenplatform::AdyenPlatformPayoutEligibilityRequest::try_from(&connector_router_data)?;
 
         Ok(RequestContent::Json(Box::new(connector_req)))
+    }
+
+    fn build_request(
+        &self,
+        req: &types::PayoutsRouterData<api::PoEligibility>,
+        connectors: &settings::Connectors,
+    ) -> CustomResult<Option<services::Request>, errors::ConnectorError> {
+        let request = services::RequestBuilder::new()
+            .method(services::Method::Post)
+            .url(&types::PayoutEligibilityType::get_url(
+                self, req, connectors,
+            )?)
+            .attach_default_headers()
+            .headers(types::PayoutEligibilityType::get_headers(
+                self, req, connectors,
+            )?)
+            .set_body(types::PayoutEligibilityType::get_request_body(
+                self, req, connectors,
+            )?)
+            .build();
+
+        Ok(Some(request))
     }
 }
