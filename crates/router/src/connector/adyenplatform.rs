@@ -473,7 +473,13 @@ impl
      *  
      * 2. Fix headers
      * 
-     * Docs states that we need idempotency key , implemented with help of UUID      
+     * Docs states that we need idempotency key , implemented with help of UUID
+     * 
+     * 3. Get request body 
+     * 
+     * - Implement AdyenPlatformPaymentRouterData
+     * - Implement AdyenPlatformPayoutEligibilityRequest
+     *       
      */
 
     fn get_url(
@@ -520,5 +526,22 @@ impl
         header.append(&mut idempotency_key);
 
         Ok(header)
+    }
+
+    fn get_request_body(
+        &self,
+        req: &types::PayoutsRouterData<api::PoEligibility>,
+        _connectors: &settings::Connectors,
+    ) -> CustomResult<RequestContent, errors::ConnectorError> {
+        let amount = convert_amount(
+            self.amount_converter,
+            req.request.minor_amount,
+            req.request.destination_currency,
+        )?;
+
+        let connector_router_data = adyen::AdyenPlatformPaymentRouterData::try_from((amount, req))?;
+        let connector_req = adyen::AdyenPlatformPayoutEligibilityRequest::try_from(&connector_router_data)?;
+
+        Ok(RequestContent::Json(Box::new(connector_req)))
     }
 }
