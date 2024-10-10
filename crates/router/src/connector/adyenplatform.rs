@@ -444,3 +444,43 @@ impl api::IncomingWebhook for Adyenplatform {
         }
     }
 }
+
+
+/***
+ * TODO : Implement PoEligibility
+ * 
+ * TODO : Implmenet card payout in PoFulfill
+ * 
+ */
+const ADYEN_API_VERSION: &str = "v71";
+
+#[cfg(feature = "payouts")]
+impl
+    services::ConnectorIntegration<
+    api::PoEligibility,
+    types::PayoutsData,
+    types::PayoutsResponseData,
+> for AdyenPlatform{
+    /***
+     * 1. Get Url
+     * 
+     * https://checkout-test.adyen.com/v71/payments
+     * 
+     * pub type PayoutRouterData<F> = RouterData<F, PayoutsData, PayoutsResponseData>
+     *       
+     */
+
+    fn get_url(
+        &self,
+        req : &types::PayoutsRouterData<api::PoEligibility>,
+        connectors: &settings::Connectors,
+    )-> CustomResult<String, errors::ConnectorError> {
+        Ok(format!(
+            "{}{}/transfers",
+            connectors.adyenplatform.base_url,
+            ADYEN_API_VERSION
+        ));
+    }
+
+
+}
