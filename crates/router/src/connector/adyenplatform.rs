@@ -45,6 +45,9 @@ use crate::{
     utils::{crypto, ByteSliceExt, BytesExt},
 };
 
+
+use uuid::Uuid;
+
 #[derive(Clone)]
 pub struct Adyenplatform {
     #[cfg(feature = "payouts")]
@@ -470,7 +473,7 @@ impl
      *  
      * 2. Fix headers
      * 
-     * Docs states that we idempotency key      
+     * Docs states that we need idempotency key , implemented with help of UUID      
      */
 
     fn get_url(
@@ -485,5 +488,37 @@ impl
         ))
     }
 
+    fn get_headers(
+        &self,
+        req: &PayoutsRouterData<api::PoFulfill>,
+        _connectors: &settings::Connectors,
+    ) -> CustomResult<Vec<(String, request::Maskable<String>)>, errors::ConnectorError> {
+        // Base headers
+        let mut header = vec![(
+            headers::CONTENT_TYPE.to_string(),
+            types::PayoutFulfillType::get_content_type(self)
+                .to_string()
+                .into(),
+        )];
 
+        // Authorization Header
+        let auth = adyenplatform::AdyenplatformAuthType::try_from(&req.connector_auth_type)
+            .change_context(errors::ConnectorError::FailedToObtainAuthType)?;
+        let mut api_key = vec![(
+            headers::AUTHORIZATION.to_string(),
+            auth.api_key.into_masked(),
+        )];
+
+        // Add the Idempotency-Key header with a UUID
+        let idempotency_key = vec![(
+            "Idempotency-Key".to_string(),
+            Uuid::new_v4().to_string().into(),
+        )];
+
+        // Append all headers
+        header.append(&mut api_key);
+        header.append(&mut idempotency_key);
+
+        Ok(header)
+    }
 }
