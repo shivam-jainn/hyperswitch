@@ -455,6 +455,10 @@ impl api::IncomingWebhook for Adyenplatform {
  * TODO : Implmenet card payout in PoFulfill
  * 
  */
+
+#[cfg(feature = "payouts")]
+impl api::PayoutEligibility for AdyenPlatform {}
+
 const ADYEN_API_VERSION: &str = "v71";
 
 #[cfg(feature = "payouts")]
@@ -463,7 +467,7 @@ impl
     api::PoEligibility,
     types::PayoutsData,
     types::PayoutsResponseData,
-> for AdyenPlatform{
+> for Adyenplatform{
     /***
      * 1. Get Url
      * 
