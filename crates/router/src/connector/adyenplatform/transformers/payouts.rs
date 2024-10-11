@@ -1,5 +1,6 @@
 #[cfg(feature = "payouts")]
 use api_models::webhooks;
+use cards::CardNumber;
 use common_utils::pii;
 use error_stack::{report, ResultExt};
 use masking::Secret;
@@ -49,12 +50,14 @@ pub struct AdyenTransferRequest {
 #[serde(rename_all = "camelCase")]
 pub enum AdyenPayoutMethod {
     Bank,
+    Card,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdyenPayoutMethodDetails {
-    bank_account: AdyenBankAccountDetails,
+    bank_account: Option<AdyenBankAccountDetails>,
+    card: Option<AdyenCardDetails>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,6 +65,13 @@ pub struct AdyenPayoutMethodDetails {
 pub struct AdyenBankAccountDetails {
     account_holder: AdyenBankAccountHolder,
     account_identification: AdyenBankAccountIdentification,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdyenCardDetails {
+    account_holder: AdyenBankAccountHolder,
+    card_identification: AdyenPlatformCardIdentification,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,6 +91,17 @@ pub struct AdyenBankAccountIdentification {
     bank_type: String,
     #[serde(flatten)]
     account_details: AdyenBankAccountIdentificationDetails,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AdyenPlatformCardIdentification {
+    number: CardNumber,
+    expiry_month: String,
+    expiry_year: String,
+    number: String,
+    start_month: String,
+    start_year: String,
+    stored_payment_method_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
