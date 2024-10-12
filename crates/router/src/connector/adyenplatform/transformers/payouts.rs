@@ -99,9 +99,6 @@ pub struct AdyenPlatformCardIdentification {
     expiry_month: String,
     expiry_year: String,
     number: String,
-    start_month: String,
-    start_year: String,
-    stored_payment_method_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -197,40 +194,24 @@ pub enum AdyenTransactionType {
 
 impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for AdyenTransferRequest {
     type Error = Error;
+    
     fn try_from(
         item: &AdyenPlatformRouterData<&types::PayoutsRouterData<F>>,
     ) -> Result<Self, Self::Error> {
         let request = item.router_data.request.to_owned();
-        match item.router_data.get_payout_method_data()? {
-            payouts::PayoutMethodData::Card(_) | payouts::PayoutMethodData::Wallet(_) => {
-                Err(errors::ConnectorError::NotImplemented(
+
+        // Handle different payout method data
+        let counterparty = match item.router_data.get_payout_method_data()? {
+            payouts::PayoutMethodData::Wallet(_) => {
+                return Err(errors::ConnectorError::NotImplemented(
                     utils::get_unimplemented_payment_method_error_message("Adyenplatform"),
-                ))?
+                ));
             }
 
-            payouts::PayoutMethodData::Bank(bd) => {
-                let bank_details = match bd {
-                    payouts::BankPayout::Sepa(b) => AdyenBankAccountIdentification {
-                        bank_type: "iban".to_string(),
-                        account_details: AdyenBankAccountIdentificationDetails::Sepa(SepaDetails {
-                            iban: b.iban,
-                        }),
-                    },
-                    payouts::BankPayout::Ach(..) => Err(errors::ConnectorError::NotSupported {
-                        message: "Bank transfer via ACH is not supported".to_string(),
-                        connector: "Adyenplatform",
-                    })?,
-                    payouts::BankPayout::Bacs(..) => Err(errors::ConnectorError::NotSupported {
-                        message: "Bank transfer via Bacs is not supported".to_string(),
-                        connector: "Adyenplatform",
-                    })?,
-                    payouts::BankPayout::Pix(..) => Err(errors::ConnectorError::NotSupported {
-                        message: "Bank transfer via Pix is not supported".to_string(),
-                        connector: "Adyenplatform",
-                    })?,
-                };
+            payouts::PayoutMethodData::Card(card_details) => {
                 let billing_address = item.router_data.get_optional_billing();
                 let address = adyen::get_address_info(billing_address).transpose()?;
+
                 let account_holder = AdyenBankAccountHolder {
                     address,
                     full_name: item.router_data.get_billing_full_name()?,
@@ -242,46 +223,112 @@ impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for Adye
                     ),
                     entity_type: Some(EntityType::from(request.entity_type)),
                 };
-                let counterparty = AdyenPayoutMethodDetails {
-                    bank_account: AdyenBankAccountDetails {
-                        account_holder,
-                        account_identification: bank_details,
-                    },
+
+                let card_identification = AdyenPlatformCardIdentification{
+                number: card.card_number.clone(),
+                expiry_month: card.expiry_month.clone(),
+                expiry_year: card.expiry_year.clone(),
+                holder_name: card
+                    .card_holder_name
+                    .clone()
+                    .get_required_value("card_holder_name")
+                    .change_context(errors::ConnectorError::MissingRequiredField {
+                        field_name: "payout_method_data.card.holder_name",
+                    })?
                 };
 
-                let adyen_connector_metadata_object =
-                    AdyenPlatformConnectorMetadataObject::try_from(
-                        &item.router_data.connector_meta_data,
-                    )?;
-                let balance_account_id = adyen_connector_metadata_object
-                    .source_balance_account
-                    .ok_or(errors::ConnectorError::InvalidConnectorConfig {
-                        config: "metadata.source_balance_account",
-                    })?;
-                let priority =
-                    request
-                        .priority
-                        .ok_or(errors::ConnectorError::MissingRequiredField {
-                            field_name: "priority",
-                        })?;
-                let payout_type = request.get_payout_type()?;
-                Ok(Self {
-                    amount: adyen::Amount {
-                        value: item.amount,
-                        currency: request.destination_currency,
-                    },
-                    balance_account_id,
-                    category: AdyenPayoutMethod::try_from(payout_type)?,
-                    counterparty,
-                    priority: AdyenPayoutPriority::from(priority),
-                    reference: item.router_data.connector_request_reference_id.clone(),
-                    reference_for_beneficiary: request.payout_id,
-                    description: item.router_data.description.clone(),
-                })
+                AdyenPayoutMethodDetails {
+                    bank_account: None,
+                    card: Some(AdyenCardDetails {
+                        account_holder : account_holder,
+                        card_identification : card_identification  
+                    }),
+                }
             }
-        }
+
+            payouts::PayoutMethodData::Bank(bd) => {
+                // Handle different bank payout types
+                let bank_details = match bd {
+                    payouts::BankPayout::Sepa(b) => AdyenBankAccountIdentification {
+                        bank_type: "iban".to_string(),
+                        account_details: AdyenBankAccountIdentificationDetails::Sepa(SepaDetails {
+                            iban: b.iban,
+                        }),
+                    },
+                    payouts::BankPayout::Ach(..) | payouts::BankPayout::Bacs(..) | payouts::BankPayout::Pix(..) => {
+                        return Err(errors::ConnectorError::NotSupported {
+                            message: "Bank transfer via unsupported type".to_string(),
+                            connector: "Adyenplatform",
+                        });
+                    }
+                };
+
+                let billing_address = item.router_data.get_optional_billing();
+                let address = adyen::get_address_info(billing_address).transpose()?;
+
+                let account_holder = AdyenBankAccountHolder {
+                    address,
+                    full_name: item.router_data.get_billing_full_name()?,
+                    customer_id: Some(
+                        item.router_data
+                            .get_customer_id()?
+                            .get_string_repr()
+                            .to_owned(),
+                    ),
+                    entity_type: Some(EntityType::from(request.entity_type)),
+                };
+
+                // Populate the bank details and leave card as None
+                AdyenPayoutMethodDetails {
+                    bank_account: Some(AdyenBankAccountDetails {
+                        account_holder,
+                        account_identification: bank_details,
+                    }),
+                    card: None,
+                }
+            }
+        };
+
+        // Get the balance account ID from metadata
+        let adyen_connector_metadata_object = AdyenPlatformConnectorMetadataObject::try_from(
+            &item.router_data.connector_meta_data,
+        )?;
+
+        let balance_account_id = adyen_connector_metadata_object
+    .source_balance_account
+    .ok_or(errors::ConnectorError::InvalidConnectorConfig {
+        config: "metadata.source_balance_account",
+    })?;
+
+        let payout_type = request.get_payout_type()?;
+
+        let priority = if matches!(item.router_data.get_payout_method_data()?, payouts::PayoutMethodData::Bank(_)) {
+            match request.priority {
+                Some(priority_value) => Some(AdyenPayoutPriority::from(priority_value.to_string().as_str())), // Convert priority_value to &str
+                None => return Err(errors::ConnectorError::MissingRequiredField {
+                    field_name: "priority"
+                }),
+            }
+        } else {
+            None
+        };        
+
+        Ok(Self {
+            amount: adyen::Amount {
+                value: item.amount,
+                currency: request.destination_currency,
+            },
+            balance_account_id,
+            category: AdyenPayoutMethod::try_from(payout_type)?,
+            counterparty,
+            priority,  // Included only for bank payouts
+            reference: item.router_data.connector_request_reference_id.clone(),
+            reference_for_beneficiary: request.payout_id,
+            description: item.router_data.description.clone(),
+        })
     }
 }
+
 
 impl<F> TryFrom<types::PayoutsResponseRouterData<F, AdyenTransferResponse>>
     for types::PayoutsRouterData<F>
