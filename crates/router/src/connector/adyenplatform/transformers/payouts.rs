@@ -95,10 +95,9 @@ pub struct AdyenBankAccountIdentification {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AdyenPlatformCardIdentification {
-    number: CardNumber,
+    number: String,
     expiry_month: String,
     expiry_year: String,
-    number: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -225,16 +224,9 @@ impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for Adye
                 };
 
                 let card_identification = AdyenPlatformCardIdentification{
-                number: card.card_number.clone(),
-                expiry_month: card.expiry_month.clone(),
-                expiry_year: card.expiry_year.clone(),
-                holder_name: card
-                    .card_holder_name
-                    .clone()
-                    .get_required_value("card_holder_name")
-                    .change_context(errors::ConnectorError::MissingRequiredField {
-                        field_name: "payout_method_data.card.holder_name",
-                    })?
+                number: card_details.card_number.clone(),
+                expiry_month: card_details.expiry_month.clone(),
+                expiry_year: card_details.expiry_year.clone()
                 };
 
                 AdyenPayoutMethodDetails {
