@@ -468,32 +468,7 @@ impl
     types::PayoutsData,
     types::PayoutsResponseData,
 > for Adyenplatform{
-    /***
-     * 1. Get Url
-     * 
-     * https://checkout-test.adyen.com/v71/payments
-     * 
-     * pub type PayoutRouterData<F> = RouterData<F, PayoutsData, PayoutsResponseData>
-     *  
-     * 2. Fix headers
-     * 
-     * Docs states that we need idempotency key , implemented with help of UUID
-     * 
-     * 3. Get request body 
-     * 
-     * - Implement AdyenPlatformPaymentRouterData
-     * - Implement AdyenPlatformPayoutEligibilityRequest
-     *     
-     * 4. Build request
-     * - Common function . Copy Paste work
-     * 
-     * 5. Handle response
-     * - Implement AdyenPlatformPayoutResponse
-     * 
-     * 6. Error and 500 erro response
-     * - Copy paste
-     */
-
+   
     fn get_url(
         &self,
         req : &types::PayoutsRouterData<api::PoEligibility>,
