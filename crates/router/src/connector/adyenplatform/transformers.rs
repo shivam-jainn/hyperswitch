@@ -1,8 +1,8 @@
+use cards::CardNumber;
 use common_utils::types::MinorUnit;
 use error_stack::Report;
 use masking::Secret;
 use serde::Serialize;
-use cards::CardNumber;
 
 #[cfg(feature = "payouts")]
 pub mod payouts;
@@ -76,7 +76,6 @@ pub struct PayoutCardDetails {
     holder_name: Secret<String>,
 }
 
-
 #[cfg(feature = "payouts")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,9 +88,8 @@ pub struct AdyenPayoutResponse {
     refusal_reason: Option<String>,
     refusal_reason_code: Option<String>,
     additional_data: Option<AdditionalData>,
-    auth_code: Option<String>
+    auth_code: Option<String>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AdyenStatus {
@@ -131,7 +129,7 @@ pub enum AdyenRecurringModel {
 pub enum AuthType {
     #[default]
     PreAuth,
-    FinalAuth
+    FinalAuth,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

@@ -19,6 +19,7 @@ use masking::Secret;
 use ring::hmac;
 #[cfg(feature = "payouts")]
 use router_env::{instrument, tracing};
+use uuid::Uuid;
 
 use self::transformers as adyenplatform;
 #[cfg(feature = "payouts")]
@@ -44,9 +45,6 @@ use crate::{
     types::transformers::ForeignFrom,
     utils::{crypto, ByteSliceExt, BytesExt},
 };
-
-
-use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Adyenplatform {
@@ -448,12 +446,11 @@ impl api::IncomingWebhook for Adyenplatform {
     }
 }
 
-
 /***
  * TODO : Implement PoEligibility
- * 
+ *
  * TODO : Implmenet card payout in PoFulfill
- * 
+ *
  */
 
 #[cfg(feature = "payouts")]
@@ -464,20 +461,19 @@ const ADYEN_API_VERSION: &str = "v71";
 #[cfg(feature = "payouts")]
 impl
     services::ConnectorIntegration<
-    api::PoEligibility,
-    types::PayoutsData,
-    types::PayoutsResponseData,
-> for Adyenplatform{
-   
+        api::PoEligibility,
+        types::PayoutsData,
+        types::PayoutsResponseData,
+    > for Adyenplatform
+{
     fn get_url(
         &self,
-        req : &types::PayoutsRouterData<api::PoEligibility>,
+        req: &types::PayoutsRouterData<api::PoEligibility>,
         connectors: &settings::Connectors,
-    )-> CustomResult<String, errors::ConnectorError> {
+    ) -> CustomResult<String, errors::ConnectorError> {
         Ok(format!(
             "{}{}/transfers",
-            connectors.adyenplatform.base_url,
-            ADYEN_API_VERSION
+            connectors.adyenplatform.base_url, ADYEN_API_VERSION
         ))
     }
 
@@ -526,8 +522,10 @@ impl
             req.request.destination_currency,
         )?;
 
-        let connector_router_data = adyenplatform::AdyenPlatformRouterData::try_from((amount, req))?;
-        let connector_req = adyenplatform::AdyenPlatformPayoutEligibilityRequest::try_from(&connector_router_data)?;
+        let connector_router_data =
+            adyenplatform::AdyenPlatformRouterData::try_from((amount, req))?;
+        let connector_req =
+            adyenplatform::AdyenPlatformPayoutEligibilityRequest::try_from(&connector_router_data)?;
 
         Ok(RequestContent::Json(Box::new(connector_req)))
     }
@@ -569,12 +567,11 @@ impl
         event_builder.map(|i| i.set_response_body(&response));
         router_env::logger::info!(connector_response=?response);
         types::RouterData::try_from(types::ResponseRouterData {
-                response,
-                data: data.clone(),
-                http_code: res.status_code,
+            response,
+            data: data.clone(),
+            http_code: res.status_code,
         })
     }
-
 
     fn get_error_response(
         &self,

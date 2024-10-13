@@ -193,7 +193,7 @@ pub enum AdyenTransactionType {
 
 impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for AdyenTransferRequest {
     type Error = Error;
-    
+
     fn try_from(
         item: &AdyenPlatformRouterData<&types::PayoutsRouterData<F>>,
     ) -> Result<Self, Self::Error> {
@@ -223,17 +223,17 @@ impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for Adye
                     entity_type: Some(EntityType::from(request.entity_type)),
                 };
 
-                let card_identification = AdyenPlatformCardIdentification{
-                number: card_details.card_number.clone(),
-                expiry_month: card_details.expiry_month.clone(),
-                expiry_year: card_details.expiry_year.clone()
+                let card_identification = AdyenPlatformCardIdentification {
+                    number: card_details.card_number.clone(),
+                    expiry_month: card_details.expiry_month.clone(),
+                    expiry_year: card_details.expiry_year.clone(),
                 };
 
                 AdyenPayoutMethodDetails {
                     bank_account: None,
                     card: Some(AdyenCardDetails {
-                        account_holder : account_holder,
-                        card_identification : card_identification  
+                        account_holder: account_holder,
+                        card_identification: card_identification,
                     }),
                 }
             }
@@ -247,7 +247,9 @@ impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for Adye
                             iban: b.iban,
                         }),
                     },
-                    payouts::BankPayout::Ach(..) | payouts::BankPayout::Bacs(..) | payouts::BankPayout::Pix(..) => {
+                    payouts::BankPayout::Ach(..)
+                    | payouts::BankPayout::Bacs(..)
+                    | payouts::BankPayout::Pix(..) => {
                         return Err(errors::ConnectorError::NotSupported {
                             message: "Bank transfer via unsupported type".to_string(),
                             connector: "Adyenplatform",
@@ -282,28 +284,34 @@ impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for Adye
         };
 
         // Get the balance account ID from metadata
-        let adyen_connector_metadata_object = AdyenPlatformConnectorMetadataObject::try_from(
-            &item.router_data.connector_meta_data,
-        )?;
+        let adyen_connector_metadata_object =
+            AdyenPlatformConnectorMetadataObject::try_from(&item.router_data.connector_meta_data)?;
 
         let balance_account_id = adyen_connector_metadata_object
-    .source_balance_account
-    .ok_or(errors::ConnectorError::InvalidConnectorConfig {
-        config: "metadata.source_balance_account",
-    })?;
+            .source_balance_account
+            .ok_or(errors::ConnectorError::InvalidConnectorConfig {
+                config: "metadata.source_balance_account",
+            })?;
 
         let payout_type = request.get_payout_type()?;
 
-        let priority = if matches!(item.router_data.get_payout_method_data()?, payouts::PayoutMethodData::Bank(_)) {
+        let priority = if matches!(
+            item.router_data.get_payout_method_data()?,
+            payouts::PayoutMethodData::Bank(_)
+        ) {
             match request.priority {
-                Some(priority_value) => Some(AdyenPayoutPriority::from(priority_value.to_string().as_str())), // Convert priority_value to &str
-                None => return Err(errors::ConnectorError::MissingRequiredField {
-                    field_name: "priority"
-                }),
+                Some(priority_value) => Some(AdyenPayoutPriority::from(
+                    priority_value.to_string().as_str(),
+                )), // Convert priority_value to &str
+                None => {
+                    return Err(errors::ConnectorError::MissingRequiredField {
+                        field_name: "priority",
+                    })
+                }
             }
         } else {
             None
-        };        
+        };
 
         Ok(Self {
             amount: adyen::Amount {
@@ -313,14 +321,13 @@ impl<F> TryFrom<&AdyenPlatformRouterData<&types::PayoutsRouterData<F>>> for Adye
             balance_account_id,
             category: AdyenPayoutMethod::try_from(payout_type)?,
             counterparty,
-            priority,  // Included only for bank payouts
+            priority, // Included only for bank payouts
             reference: item.router_data.connector_request_reference_id.clone(),
             reference_for_beneficiary: request.payout_id,
             description: item.router_data.description.clone(),
         })
     }
 }
-
 
 impl<F> TryFrom<types::PayoutsResponseRouterData<F, AdyenTransferResponse>>
     for types::PayoutsRouterData<F>
